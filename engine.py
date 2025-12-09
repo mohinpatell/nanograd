@@ -52,24 +52,62 @@ class Value:
     def __repr__(self):
         return f"Value(data={self.data}, grad={self.grad})"
 
+    def __pow__(self, other):
+        assert isinstance(other, (int, float)), "only supporting int/float powers for now"
+        out = Value(self.data ** other, (self,), f'**{other}')
+
+        # d(a^n)/da = n * a^(n-1)
+        def _backward():
+            self.grad += (other * self.data ** (other - 1)) * out.grad
+        out._backward = _backward
+
+        return out
+
+    def __neg__(self):
+        return self * -1
+
+    def __sub__(self, other):
+        return self + (-other)
+
+    def __truediv__(self, other):
+        # a / b = a * b^(-1)
+        return self * other ** -1
+
     def __radd__(self, other):
         return self + other
 
     def __rmul__(self, other):
         return self * other
 
+    def __rsub__(self, other):
+        return Value(other) + (-self)
+
+    def __rtruediv__(self, other):
+        return Value(other) * self ** -1
+
 
 if __name__ == '__main__':
-    # simple test: f = a*b + c, compute gradients
-    a = Value(2.0)
-    b = Value(-3.0)
-    c = Value(10.0)
-    f = a * b + c  # f = 2*(-3) + 10 = 4
+    # test all the new ops
+    a = Value(4.0)
+    b = Value(2.0)
 
-    f.backward()
+    # subtraction
+    c = a - b  # 2.0
+    c.backward()
+    print(f"a - b = {c.data} | a.grad={a.grad}, b.grad={b.grad}")
 
-    # df/da = b = -3, df/db = a = 2, df/dc = 1
-    print(f"f = {f}")
-    print(f"a.grad = {a.grad} (expected -3.0)")
-    print(f"b.grad = {b.grad} (expected 2.0)")
-    print(f"c.grad = {c.grad} (expected 1.0)")
+    # reset grads
+    a.grad = 0; b.grad = 0
+
+    # division
+    d = a / b  # 2.0
+    d.backward()
+    print(f"a / b = {d.data} | a.grad={a.grad}, b.grad={b.grad}")
+
+    # reset
+    a.grad = 0
+
+    # power
+    e = a ** 3  # 64.0
+    e.backward()
+    print(f"a ** 3 = {e.data} | a.grad={a.grad} (expected 48.0)")

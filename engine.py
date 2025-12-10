@@ -52,6 +52,38 @@ class Value:
     def __repr__(self):
         return f"Value(data={self.data}, grad={self.grad})"
 
+    def exp(self):
+        import math
+        out = Value(math.exp(self.data), (self,), 'exp')
+
+        # d(e^a)/da = e^a
+        def _backward():
+            self.grad += out.data * out.grad  # nice: derivative of exp is just exp
+        out._backward = _backward
+
+        return out
+
+    def tanh(self):
+        import math
+        t = math.tanh(self.data)
+        out = Value(t, (self,), 'tanh')
+
+        # d(tanh(a))/da = 1 - tanh(a)^2
+        def _backward():
+            self.grad += (1 - t ** 2) * out.grad
+        out._backward = _backward
+
+        return out
+
+    def relu(self):
+        out = Value(self.data if self.data > 0 else 0, (self,), 'relu')
+
+        def _backward():
+            self.grad += (out.data > 0) * out.grad
+        out._backward = _backward
+
+        return out
+
     def __pow__(self, other):
         assert isinstance(other, (int, float)), "only supporting int/float powers for now"
         out = Value(self.data ** other, (self,), f'**{other}')
@@ -87,27 +119,27 @@ class Value:
 
 
 if __name__ == '__main__':
-    # test all the new ops
-    a = Value(4.0)
-    b = Value(2.0)
+    import math
 
-    # subtraction
-    c = a - b  # 2.0
-    c.backward()
-    print(f"a - b = {c.data} | a.grad={a.grad}, b.grad={b.grad}")
+    # test exp
+    a = Value(2.0)
+    b = a.exp()
+    b.backward()
+    print(f"exp(2) = {b.data:.4f} (expected {math.exp(2):.4f}) | a.grad = {a.grad:.4f}")
 
-    # reset grads
-    a.grad = 0; b.grad = 0
+    # test tanh
+    a = Value(0.5)
+    b = a.tanh()
+    b.backward()
+    print(f"tanh(0.5) = {b.data:.4f} (expected {math.tanh(0.5):.4f}) | a.grad = {a.grad:.4f}")
 
-    # division
-    d = a / b  # 2.0
-    d.backward()
-    print(f"a / b = {d.data} | a.grad={a.grad}, b.grad={b.grad}")
+    # test relu
+    a = Value(-2.0)
+    b = a.relu()
+    b.backward()
+    print(f"relu(-2) = {b.data} | a.grad = {a.grad} (expected 0)")
 
-    # reset
-    a.grad = 0
-
-    # power
-    e = a ** 3  # 64.0
-    e.backward()
-    print(f"a ** 3 = {e.data} | a.grad={a.grad} (expected 48.0)")
+    a = Value(3.0)
+    b = a.relu()
+    b.backward()
+    print(f"relu(3) = {b.data} | a.grad = {a.grad} (expected 1)")

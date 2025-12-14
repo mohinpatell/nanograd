@@ -65,6 +65,38 @@ class Tensor:
 
         return out
 
+    def matmul(self, other):
+        """Matrix multiplication: self @ other."""
+        other = self._make_tensor(other)
+        out = Tensor(self.data @ other.data, (self, other), '@',
+                     requires_grad=self.requires_grad or other.requires_grad)
+
+        # for Y = A @ B:
+        #   dL/dA = dL/dY @ B^T
+        #   dL/dB = A^T @ dL/dY
+        def _backward():
+            if self.requires_grad:
+                self.grad += out.grad @ other.data.T
+            if other.requires_grad:
+                other.grad += self.data.T @ out.grad
+        out._backward = _backward
+
+        return out
+
+    def __matmul__(self, other):
+        return self.matmul(other)
+
+    def sum(self):
+        out = Tensor(self.data.sum(), (self,), 'sum',
+                     requires_grad=self.requires_grad)
+
+        def _backward():
+            if self.requires_grad:
+                self.grad += np.ones_like(self.data) * out.grad
+        out._backward = _backward
+
+        return out
+
     def __radd__(self, other):
         return self + other
 
@@ -93,36 +125,36 @@ class Tensor:
 
 
 if __name__ == '__main__':
-    # element-wise add
+    # test add with sum
     a = Tensor([1, 2, 3], requires_grad=True)
     b = Tensor([4, 5, 6], requires_grad=True)
-    c = a + b
-    s = Tensor(c.data.sum(), (c,), 'sum', requires_grad=True)
+    c = (a + b).sum()
+    c.backward()
+    print(f"(a + b).sum() grads: a={a.grad}, b={b.grad}")
 
-    # manually wire up the sum backward for now
-    def _sum_backward():
-        c.grad = np.ones_like(c.data) * s.grad if c.requires_grad else None
-    s._backward = _sum_backward
-    c.requires_grad = True
-    c.grad = np.zeros_like(c.data)
-
-    s.backward()
-    print(f"a + b = {c.data}")
-    print(f"a.grad = {a.grad}")  # should be [1, 1, 1]
-    print(f"b.grad = {b.grad}")  # should be [1, 1, 1]
-
-    # element-wise mul
+    # test mul with sum
     a = Tensor([2, 3], requires_grad=True)
     b = Tensor([4, 5], requires_grad=True)
-    c = a * b  # [8, 15]
-    s = Tensor(c.data.sum(), (c,), 'sum', requires_grad=True)
-    def _sum_backward2():
-        c.grad = np.ones_like(c.data) * s.grad
-    s._backward = _sum_backward2
-    c.requires_grad = True
-    c.grad = np.zeros_like(c.data)
+    c = (a * b).sum()
+    c.backward()
+    print(f"(a * b).sum() grads: a={a.grad} (expect [4,5]), b={b.grad} (expect [2,3])")
 
-    s.backward()
-    print(f"\na * b = {c.data}")
-    print(f"a.grad = {a.grad}")  # should be [4, 5]
-    print(f"b.grad = {b.grad}")  # should be [2, 3]
+    # test matmul
+    # A is (2,3), B is (3,2), result is (2,2)
+    A = Tensor([[1, 2, 3], [4, 5, 6]], requires_grad=True)
+    B = Tensor([[1, 0], [0, 1], [1, 1]], requires_grad=True)
+    C = (A @ B).sum()
+    C.backward()
+    print(f"\nA @ B matmul:")
+    print(f"A.grad =\n{A.grad}")
+    print(f"B.grad =\n{B.grad}")
+
+    # verify against pytorch
+    import torch
+    At = torch.tensor([[1, 2, 3], [4, 5, 6]], dtype=torch.float32, requires_grad=True)
+    Bt = torch.tensor([[1, 0], [0, 1], [1, 1]], dtype=torch.float32, requires_grad=True)
+    Ct = (At @ Bt).sum()
+    Ct.backward()
+    print(f"\nPyTorch A.grad =\n{At.grad.numpy()}")
+    print(f"PyTorch B.grad =\n{Bt.grad.numpy()}")
+    print(f"\nMatch: A={np.allclose(A.grad, At.grad.numpy())}, B={np.allclose(B.grad, Bt.grad.numpy())}")

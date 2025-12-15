@@ -37,6 +37,22 @@ class Tensor:
             return other
         return Tensor(other)
 
+    @staticmethod
+    def _unbroadcast(grad, shape):
+        """Sum out dimensions that were broadcast so grad matches original shape.
+
+        When numpy broadcasts (3,4) + (4,) -> (3,4), the grad coming back is (3,4)
+        but we need (4,) for the second operand. So we sum along axis 0.
+        """
+        # first handle the case where shape has fewer dims (was prepended with 1s)
+        while len(grad.shape) > len(shape):
+            grad = grad.sum(axis=0)
+        # then handle dims that were 1 and got broadcast
+        for i, s in enumerate(shape):
+            if s == 1:
+                grad = grad.sum(axis=i, keepdims=True)
+        return grad
+
     def __add__(self, other):
         other = self._make_tensor(other)
         out = Tensor(self.data + other.data, (self, other), '+',
@@ -44,9 +60,9 @@ class Tensor:
 
         def _backward():
             if self.requires_grad:
-                self.grad += out.grad
+                self.grad += Tensor._unbroadcast(out.grad, self.shape)
             if other.requires_grad:
-                other.grad += out.grad
+                other.grad += Tensor._unbroadcast(out.grad, other.shape)
         out._backward = _backward
 
         return out
@@ -58,9 +74,9 @@ class Tensor:
 
         def _backward():
             if self.requires_grad:
-                self.grad += other.data * out.grad
+                self.grad += Tensor._unbroadcast(other.data * out.grad, self.shape)
             if other.requires_grad:
-                other.grad += self.data * out.grad
+                other.grad += Tensor._unbroadcast(self.data * out.grad, other.shape)
         out._backward = _backward
 
         return out
@@ -125,36 +141,45 @@ class Tensor:
 
 
 if __name__ == '__main__':
-    # test add with sum
-    a = Tensor([1, 2, 3], requires_grad=True)
-    b = Tensor([4, 5, 6], requires_grad=True)
+    import torch
+
+    # Test broadcasting: (3,4) + (4,)
+    a = Tensor(np.random.randn(3, 4).astype(np.float32), requires_grad=True)
+    b = Tensor(np.random.randn(4).astype(np.float32), requires_grad=True)
     c = (a + b).sum()
     c.backward()
-    print(f"(a + b).sum() grads: a={a.grad}, b={b.grad}")
 
-    # test mul with sum
-    a = Tensor([2, 3], requires_grad=True)
-    b = Tensor([4, 5], requires_grad=True)
+    at = torch.tensor(a.data, requires_grad=True)
+    bt = torch.tensor(b.data, requires_grad=True)
+    ct = (at + bt).sum()
+    ct.backward()
+
+    print("Broadcasting add (3,4) + (4,):")
+    print(f"  a.grad match: {np.allclose(a.grad, at.grad.numpy())}")
+    print(f"  b.grad match: {np.allclose(b.grad, bt.grad.numpy())}")
+    print(f"  b.grad shape: {b.grad.shape} (should be (4,))")
+
+    # Test broadcasting: (3,4) * (1,4)
+    a = Tensor(np.random.randn(3, 4).astype(np.float32), requires_grad=True)
+    b = Tensor(np.random.randn(1, 4).astype(np.float32), requires_grad=True)
     c = (a * b).sum()
     c.backward()
-    print(f"(a * b).sum() grads: a={a.grad} (expect [4,5]), b={b.grad} (expect [2,3])")
 
-    # test matmul
-    # A is (2,3), B is (3,2), result is (2,2)
-    A = Tensor([[1, 2, 3], [4, 5, 6]], requires_grad=True)
-    B = Tensor([[1, 0], [0, 1], [1, 1]], requires_grad=True)
-    C = (A @ B).sum()
-    C.backward()
-    print(f"\nA @ B matmul:")
-    print(f"A.grad =\n{A.grad}")
-    print(f"B.grad =\n{B.grad}")
+    at = torch.tensor(a.data, requires_grad=True)
+    bt = torch.tensor(b.data, requires_grad=True)
+    ct = (at * bt).sum()
+    ct.backward()
 
-    # verify against pytorch
-    import torch
-    At = torch.tensor([[1, 2, 3], [4, 5, 6]], dtype=torch.float32, requires_grad=True)
-    Bt = torch.tensor([[1, 0], [0, 1], [1, 1]], dtype=torch.float32, requires_grad=True)
-    Ct = (At @ Bt).sum()
-    Ct.backward()
-    print(f"\nPyTorch A.grad =\n{At.grad.numpy()}")
-    print(f"PyTorch B.grad =\n{Bt.grad.numpy()}")
-    print(f"\nMatch: A={np.allclose(A.grad, At.grad.numpy())}, B={np.allclose(B.grad, Bt.grad.numpy())}")
+    print("\nBroadcasting mul (3,4) * (1,4):")
+    print(f"  a.grad match: {np.allclose(a.grad, at.grad.numpy())}")
+    print(f"  b.grad match: {np.allclose(b.grad, bt.grad.numpy())}")
+    print(f"  b.grad shape: {b.grad.shape} (should be (1,4))")
+
+    # Test scalar broadcast: (3,) + scalar
+    a = Tensor([1.0, 2.0, 3.0], requires_grad=True)
+    c = (a + 5.0).sum()
+    c.backward()
+    at = torch.tensor([1.0, 2.0, 3.0], requires_grad=True)
+    ct = (at + 5.0).sum()
+    ct.backward()
+    print(f"\nScalar broadcast: a.grad match: {np.allclose(a.grad, at.grad.numpy())}")

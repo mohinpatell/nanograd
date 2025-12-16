@@ -113,6 +113,38 @@ class Tensor:
 
         return out
 
+    def mean(self):
+        n = self.data.size
+        out = Tensor(self.data.mean(), (self,), 'mean',
+                     requires_grad=self.requires_grad)
+
+        def _backward():
+            if self.requires_grad:
+                self.grad += np.ones_like(self.data) * (out.grad / n)
+        out._backward = _backward
+
+        return out
+
+    def relu(self):
+        out = Tensor(np.maximum(self.data, 0), (self,), 'relu',
+                     requires_grad=self.requires_grad)
+
+        def _backward():
+            if self.requires_grad:
+                self.grad += (self.data > 0).astype(np.float32) * out.grad
+        out._backward = _backward
+
+        return out
+
+    def __neg__(self):
+        return self * -1
+
+    def __sub__(self, other):
+        return self + (-other)
+
+    def __rsub__(self, other):
+        return Tensor(other) + (-self)
+
     def __radd__(self, other):
         return self + other
 
@@ -143,43 +175,49 @@ class Tensor:
 if __name__ == '__main__':
     import torch
 
-    # Test broadcasting: (3,4) + (4,)
-    a = Tensor(np.random.randn(3, 4).astype(np.float32), requires_grad=True)
-    b = Tensor(np.random.randn(4).astype(np.float32), requires_grad=True)
-    c = (a + b).sum()
+    # test relu
+    a = Tensor(np.array([-1.0, 2.0, -3.0, 4.0]), requires_grad=True)
+    c = a.relu().sum()
     c.backward()
 
-    at = torch.tensor(a.data, requires_grad=True)
+    at = torch.tensor([-1.0, 2.0, -3.0, 4.0], requires_grad=True)
+    ct = at.relu().sum()
+    ct.backward()
+    print(f"relu grad match: {np.allclose(a.grad, at.grad.numpy())}")
+    print(f"  ours: {a.grad}, pytorch: {at.grad.numpy()}")
+
+    # test mean
+    a = Tensor(np.array([[1.0, 2.0], [3.0, 4.0]]), requires_grad=True)
+    c = a.mean()
+    c.backward()
+
+    at = torch.tensor([[1.0, 2.0], [3.0, 4.0]], requires_grad=True)
+    ct = at.mean()
+    ct.backward()
+    print(f"\nmean grad match: {np.allclose(a.grad, at.grad.numpy())}")
+    print(f"  ours: {a.grad}")
+
+    # test sub
+    a = Tensor([3.0, 4.0], requires_grad=True)
+    b = Tensor([1.0, 2.0], requires_grad=True)
+    c = (a - b).sum()
+    c.backward()
+    print(f"\nsub grads: a={a.grad} (expect [1,1]), b={b.grad} (expect [-1,-1])")
+
+    # combined expression: relu(Wx + b).mean()
+    W = Tensor(np.random.randn(3, 4).astype(np.float32), requires_grad=True)
+    x = Tensor(np.random.randn(4, 2).astype(np.float32), requires_grad=True)
+    b = Tensor(np.random.randn(3, 1).astype(np.float32), requires_grad=True)
+    y = (W @ x + b).relu().mean()
+    y.backward()
+
+    Wt = torch.tensor(W.data, requires_grad=True)
+    xt = torch.tensor(x.data, requires_grad=True)
     bt = torch.tensor(b.data, requires_grad=True)
-    ct = (at + bt).sum()
-    ct.backward()
+    yt = (Wt @ xt + bt).relu().mean()
+    yt.backward()
 
-    print("Broadcasting add (3,4) + (4,):")
-    print(f"  a.grad match: {np.allclose(a.grad, at.grad.numpy())}")
-    print(f"  b.grad match: {np.allclose(b.grad, bt.grad.numpy())}")
-    print(f"  b.grad shape: {b.grad.shape} (should be (4,))")
-
-    # Test broadcasting: (3,4) * (1,4)
-    a = Tensor(np.random.randn(3, 4).astype(np.float32), requires_grad=True)
-    b = Tensor(np.random.randn(1, 4).astype(np.float32), requires_grad=True)
-    c = (a * b).sum()
-    c.backward()
-
-    at = torch.tensor(a.data, requires_grad=True)
-    bt = torch.tensor(b.data, requires_grad=True)
-    ct = (at * bt).sum()
-    ct.backward()
-
-    print("\nBroadcasting mul (3,4) * (1,4):")
-    print(f"  a.grad match: {np.allclose(a.grad, at.grad.numpy())}")
-    print(f"  b.grad match: {np.allclose(b.grad, bt.grad.numpy())}")
-    print(f"  b.grad shape: {b.grad.shape} (should be (1,4))")
-
-    # Test scalar broadcast: (3,) + scalar
-    a = Tensor([1.0, 2.0, 3.0], requires_grad=True)
-    c = (a + 5.0).sum()
-    c.backward()
-    at = torch.tensor([1.0, 2.0, 3.0], requires_grad=True)
-    ct = (at + 5.0).sum()
-    ct.backward()
-    print(f"\nScalar broadcast: a.grad match: {np.allclose(a.grad, at.grad.numpy())}")
+    print(f"\nrelu(Wx + b).mean() grads:")
+    print(f"  W match: {np.allclose(W.grad, Wt.grad.numpy(), atol=1e-6)}")
+    print(f"  x match: {np.allclose(x.grad, xt.grad.numpy(), atol=1e-6)}")
+    print(f"  b match: {np.allclose(b.grad, bt.grad.numpy(), atol=1e-6)}")

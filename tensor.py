@@ -136,6 +136,34 @@ class Tensor:
 
         return out
 
+    def reshape(self, *shape):
+        out = Tensor(self.data.reshape(shape), (self,), 'reshape',
+                     requires_grad=self.requires_grad)
+
+        def _backward():
+            if self.requires_grad:
+                self.grad += out.grad.reshape(self.shape)
+        out._backward = _backward
+
+        return out
+
+    def transpose(self, ax0=-2, ax1=-1):
+        axes = list(range(len(self.shape)))
+        axes[ax0], axes[ax1] = axes[ax1], axes[ax0]
+        out = Tensor(self.data.transpose(axes), (self,), 'T',
+                     requires_grad=self.requires_grad)
+
+        def _backward():
+            if self.requires_grad:
+                self.grad += out.grad.transpose(axes)
+        out._backward = _backward
+
+        return out
+
+    @property
+    def T(self):
+        return self.transpose()
+
     def __neg__(self):
         return self * -1
 

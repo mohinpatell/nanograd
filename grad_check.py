@@ -7,7 +7,7 @@ our analytical gradients from backprop.
 """
 
 import numpy as np
-from tensor import Tensor
+from nanograd import Tensor
 
 
 def numerical_gradient(f, tensor, eps=1e-4):

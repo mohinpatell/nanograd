@@ -125,6 +125,28 @@ class Tensor:
 
         return out
 
+    def exp(self):
+        out = Tensor(np.exp(self.data), (self,), 'exp',
+                     requires_grad=self.requires_grad)
+
+        def _backward():
+            if self.requires_grad:
+                self.grad += out.data * out.grad
+        out._backward = _backward
+
+        return out
+
+    def log(self):
+        out = Tensor(np.log(self.data), (self,), 'log',
+                     requires_grad=self.requires_grad)
+
+        def _backward():
+            if self.requires_grad:
+                self.grad += (1.0 / self.data) * out.grad
+        out._backward = _backward
+
+        return out
+
     def relu(self):
         out = Tensor(np.maximum(self.data, 0), (self,), 'relu',
                      requires_grad=self.requires_grad)

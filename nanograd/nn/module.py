@@ -46,3 +46,24 @@ class Module:
     def zero_grad(self):
         for p in self.parameters():
             p.grad = np.zeros_like(p.data)
+
+    def _get_submodules(self):
+        modules = []
+        for attr in vars(self).values():
+            if isinstance(attr, Module):
+                modules.append(attr)
+                modules.extend(attr._get_submodules())
+            elif isinstance(attr, (list, tuple)):
+                for item in attr:
+                    if isinstance(item, Module):
+                        modules.append(item)
+                        modules.extend(item._get_submodules())
+        return modules
+
+    def set_training(self, mode):
+        """Set training mode for module and all submodules."""
+        for m in self._get_submodules():
+            if hasattr(m, 'training'):
+                m.training = mode
+        if hasattr(self, 'training'):
+            self.training = mode

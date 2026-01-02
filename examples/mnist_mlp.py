@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import argparse
 import numpy as np
 from nanograd import Tensor
-from nanograd.nn import Linear, ReLU, Sequential, CrossEntropyLoss
+from nanograd.nn import Linear, ReLU, Sequential, CrossEntropyLoss, Dropout
 from nanograd.optim import SGD, Adam
 from nanograd.data import DataLoader, load_mnist
 
@@ -22,6 +22,7 @@ parser.add_argument('--optimizer', type=str, default='adam', choices=['sgd', 'ad
 parser.add_argument('--lr', type=float, default=None)
 parser.add_argument('--epochs', type=int, default=5)
 parser.add_argument('--batch-size', type=int, default=64)
+parser.add_argument('--dropout', type=float, default=0.2)
 args = parser.parse_args()
 
 # load data
@@ -33,8 +34,10 @@ print(f"Train: {X_train.shape}, Test: {X_test.shape}")
 model = Sequential(
     Linear(784, 128),
     ReLU(),
+    Dropout(args.dropout),
     Linear(128, 64),
     ReLU(),
+    Dropout(args.dropout),
     Linear(64, 10),
 )
 
@@ -60,6 +63,7 @@ test_loader = DataLoader(X_test, y_test, batch_size=256, shuffle=False)
 
 for epoch in range(EPOCHS):
     # train
+    model.set_training(True)
     total_loss = 0
     correct = 0
     total = 0
@@ -81,7 +85,8 @@ for epoch in range(EPOCHS):
     train_loss = total_loss / total
     train_acc = correct / total
 
-    # eval
+    # eval (disable dropout)
+    model.set_training(False)
     test_correct = 0
     test_total = 0
     for batch_X, batch_y in test_loader:

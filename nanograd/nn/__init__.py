@@ -4,3 +4,4 @@ from nanograd.nn.activations import ReLU
 from nanograd.nn.loss import MSELoss, CrossEntropyLoss
 from nanograd.nn.sequential import Sequential
 from nanograd.nn.dropout import Dropout
+from nanograd.nn.conv import Conv2d

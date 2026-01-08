@@ -4,14 +4,7 @@ from nanograd.nn.module import Module
 
 
 class Dropout(Module):
-    """Randomly zeroes elements during training for regularization.
-
-    During training, each element is zeroed with probability p, and the
-    remaining elements are scaled by 1/(1-p) so the expected value stays
-    the same (inverted dropout).
-
-    During eval (self.training=False), dropout is a no-op.
-    """
+    """Inverted dropout. No-op during eval."""
 
     def __init__(self, p=0.5):
         self.p = p
@@ -21,7 +14,6 @@ class Dropout(Module):
         if not self.training:
             return x
 
-        # generate mask: 1 with prob (1-p), 0 with prob p
         mask = (np.random.rand(*x.shape) > self.p).astype(np.float32)
         scale = 1.0 / (1.0 - self.p)
 

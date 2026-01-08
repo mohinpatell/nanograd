@@ -3,7 +3,7 @@ from nanograd.tensor import Tensor
 
 
 class Parameter(Tensor):
-    """A Tensor that's always requires_grad=True. Used for learnable weights."""
+    """Tensor with requires_grad=True."""
 
     def __init__(self, data):
         if isinstance(data, np.ndarray):
@@ -16,10 +16,6 @@ class Parameter(Tensor):
 
 
 class Module:
-    """Base class for all neural network modules.
-
-    Subclasses should implement forward().
-    """
 
     def forward(self, *args, **kwargs):
         raise NotImplementedError
@@ -28,7 +24,6 @@ class Module:
         return self.forward(*args, **kwargs)
 
     def parameters(self):
-        """Return all Parameters in this module."""
         params = []
         for attr in vars(self).values():
             if isinstance(attr, Parameter):
@@ -61,7 +56,6 @@ class Module:
         return modules
 
     def set_training(self, mode):
-        """Set training mode for module and all submodules."""
         for m in self._get_submodules():
             if hasattr(m, 'training'):
                 m.training = mode

@@ -1,8 +1,4 @@
-"""MNIST dataset loading.
-
-Downloads the dataset from the web if not already cached locally.
-Returns numpy arrays ready for training.
-"""
+"""MNIST dataset loading. Downloads and caches locally."""
 
 import os
 import gzip

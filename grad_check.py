@@ -1,10 +1,5 @@
-"""Numerical gradient checking to verify our autograd is correct.
-
-The idea: for each parameter element, perturb it by a small epsilon,
-compute the function twice (f(x+eps) and f(x-eps)), and estimate the
-gradient as (f(x+eps) - f(x-eps)) / (2*eps). Then compare against
-our analytical gradients from backprop.
-"""
+"""Numerical gradient checking — perturb each param by eps and compare
+(f(x+eps) - f(x-eps)) / 2eps against our backprop gradients."""
 
 import numpy as np
 from nanograd import Tensor
@@ -32,21 +27,11 @@ def numerical_gradient(f, tensor, eps=1e-4):
 
 
 def check_gradient(f, tensors, eps=1e-4, tol=1e-3):
-    """Check analytical gradients against numerical gradients.
-
-    Args:
-        f: function that takes no args, uses the tensors via closure, returns scalar Tensor
-        tensors: list of Tensors to check gradients for
-        eps: perturbation size
-        tol: tolerance for gradient match
-
-    Returns True if all gradients match within tolerance.
-    """
-    # compute analytical gradients
+    """Compare backprop gradients against numerical estimate. Returns True if they match."""
     result = f()
     result.backward()
 
-    # save analytical grads BEFORE numerical check (which calls f() and zeros them)
+    # save these before numerical check wipes them
     analytical_grads = [t.grad.copy() for t in tensors]
 
     all_ok = True

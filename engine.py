@@ -1,5 +1,5 @@
 class Value:
-    """Stores a single scalar value and its gradient."""
+    """Scalar value with autograd."""
 
     def __init__(self, data, _children=(), _op=''):
         self.data = data
@@ -12,7 +12,6 @@ class Value:
         other = other if isinstance(other, Value) else Value(other)
         out = Value(self.data + other.data, (self, other), '+')
 
-        # d(a+b)/da = 1, d(a+b)/db = 1
         def _backward():
             self.grad += out.grad
             other.grad += out.grad
@@ -24,7 +23,6 @@ class Value:
         other = other if isinstance(other, Value) else Value(other)
         out = Value(self.data * other.data, (self, other), '*')
 
-        # d(a*b)/da = b, d(a*b)/db = a
         def _backward():
             self.grad += other.data * out.grad
             other.grad += self.data * out.grad
@@ -33,7 +31,6 @@ class Value:
         return out
 
     def backward(self):
-        # topological sort so we call _backward in the right order
         topo = []
         visited = set()
         def build_topo(v):
@@ -44,7 +41,6 @@ class Value:
                 topo.append(v)
         build_topo(self)
 
-        # go one node at a time and apply the chain rule
         self.grad = 1
         for v in reversed(topo):
             v._backward()
@@ -56,9 +52,8 @@ class Value:
         import math
         out = Value(math.exp(self.data), (self,), 'exp')
 
-        # d(e^a)/da = e^a
         def _backward():
-            self.grad += out.data * out.grad  # nice: derivative of exp is just exp
+            self.grad += out.data * out.grad
         out._backward = _backward
 
         return out
@@ -68,7 +63,6 @@ class Value:
         t = math.tanh(self.data)
         out = Value(t, (self,), 'tanh')
 
-        # d(tanh(a))/da = 1 - tanh(a)^2
         def _backward():
             self.grad += (1 - t ** 2) * out.grad
         out._backward = _backward
@@ -88,7 +82,6 @@ class Value:
         assert isinstance(other, (int, float)), "only supporting int/float powers for now"
         out = Value(self.data ** other, (self,), f'**{other}')
 
-        # d(a^n)/da = n * a^(n-1)
         def _backward():
             self.grad += (other * self.data ** (other - 1)) * out.grad
         out._backward = _backward
@@ -102,7 +95,6 @@ class Value:
         return self + (-other)
 
     def __truediv__(self, other):
-        # a / b = a * b^(-1)
         return self * other ** -1
 
     def __radd__(self, other):

@@ -3,14 +3,7 @@ from nanograd.tensor import Tensor
 
 
 class DataLoader:
-    """Simple data loader with batching and shuffling.
-
-    Args:
-        X: input data as numpy array
-        y: labels as numpy array
-        batch_size: number of samples per batch
-        shuffle: whether to shuffle at the start of each epoch
-    """
+    """Yields (X, y) batches with optional shuffling."""
 
     def __init__(self, X, y, batch_size=32, shuffle=True):
         self.X = X

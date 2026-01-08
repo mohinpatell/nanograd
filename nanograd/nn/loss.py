@@ -4,7 +4,6 @@ from nanograd.nn.module import Module
 
 
 class MSELoss(Module):
-    """Mean Squared Error loss."""
 
     def forward(self, pred, target):
         diff = pred + target * -1  # pred - target
@@ -12,28 +11,17 @@ class MSELoss(Module):
 
 
 class CrossEntropyLoss(Module):
-    """Cross-entropy loss for classification.
-
-    Expects:
-        logits: (batch, num_classes) raw scores, NOT softmax'd
-        targets: (batch,) integer class labels as a numpy array
-
-    Computes log-softmax internally using the log-sum-exp trick for
-    numerical stability, then picks the log-prob for the correct class.
-    """
+    """Takes raw logits (batch, classes) and integer targets (batch,)."""
 
     def forward(self, logits, targets):
         batch_size = logits.shape[0]
 
-        # log-softmax with numerical stability:
-        # log_softmax(x) = x - log(sum(exp(x)))
-        # = x - (max + log(sum(exp(x - max))))
+        # shift by max so exp() doesn't overflow
         max_vals = logits.data.max(axis=1, keepdims=True)
-        shifted = logits + Tensor(-max_vals)  # subtract max for stability
+        shifted = logits + Tensor(-max_vals)
         exp_shifted = shifted.exp()
 
-        # sum along class dimension
-        # we need a sum that keeps dims, have to build it manually
+        # manual sum along class dim (need to keep dims for broadcast)
         sum_exp = Tensor(exp_shifted.data.sum(axis=1, keepdims=True),
                          (exp_shifted,), 'sum_axis1',
                          requires_grad=exp_shifted.requires_grad)
@@ -49,13 +37,11 @@ class CrossEntropyLoss(Module):
         log_sum = sum_exp.log()
         log_probs = shifted + log_sum * -1  # (batch, classes)
 
-        # pick the log-prob for the correct class
         if isinstance(targets, Tensor):
             targets_np = targets.data.astype(int)
         else:
             targets_np = np.array(targets, dtype=int)
 
-        # gather the correct class log-probs
         correct_log_probs = log_probs.data[np.arange(batch_size), targets_np]
         nll = Tensor(-correct_log_probs.mean(), (log_probs,), 'nll',
                      requires_grad=log_probs.requires_grad)

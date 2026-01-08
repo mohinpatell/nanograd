@@ -2,7 +2,7 @@ import numpy as np
 
 
 class Tensor:
-    """A tensor with automatic differentiation support, backed by numpy."""
+    """Tensor with autograd, backed by numpy."""
 
     def __init__(self, data, _children=(), _op='', requires_grad=False):
         if isinstance(data, (int, float, np.floating, np.integer)):
@@ -39,15 +39,9 @@ class Tensor:
 
     @staticmethod
     def _unbroadcast(grad, shape):
-        """Sum out dimensions that were broadcast so grad matches original shape.
-
-        When numpy broadcasts (3,4) + (4,) -> (3,4), the grad coming back is (3,4)
-        but we need (4,) for the second operand. So we sum along axis 0.
-        """
-        # first handle the case where shape has fewer dims (was prepended with 1s)
+        """Sum out broadcast dims so grad matches original shape."""
         while len(grad.shape) > len(shape):
             grad = grad.sum(axis=0)
-        # then handle dims that were 1 and got broadcast
         for i, s in enumerate(shape):
             if s == 1:
                 grad = grad.sum(axis=i, keepdims=True)
@@ -82,14 +76,10 @@ class Tensor:
         return out
 
     def matmul(self, other):
-        """Matrix multiplication: self @ other."""
         other = self._make_tensor(other)
         out = Tensor(self.data @ other.data, (self, other), '@',
                      requires_grad=self.requires_grad or other.requires_grad)
 
-        # for Y = A @ B:
-        #   dL/dA = dL/dY @ B^T
-        #   dL/dB = A^T @ dL/dY
         def _backward():
             if self.requires_grad:
                 self.grad += out.grad @ other.data.T

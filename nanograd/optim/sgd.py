@@ -1,10 +1,5 @@
 class SGD:
-    """Stochastic Gradient Descent optimizer.
-
-    Args:
-        params: iterable of Parameters to optimize
-        lr: learning rate
-    """
+    """SGD with configurable learning rate."""
 
     def __init__(self, params, lr=0.01):
         self.params = list(params)

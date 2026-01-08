@@ -1,10 +1,4 @@
-"""Train a tiny neural network to learn XOR.
-
-XOR is the classic test for neural networks because it's not linearly
-separable, so you need at least one hidden layer to learn it.
-
-Network: 2 -> 8 -> 1 (with ReLU activation)
-"""
+"""XOR sanity check — needs a hidden layer since it's not linearly separable."""
 
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

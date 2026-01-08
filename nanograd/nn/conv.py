@@ -33,7 +33,7 @@ def _im2col(x, kh, kw, stride=1, padding=0):
 
 
 def _col2im(cols, x_shape, kh, kw, stride=1, padding=0):
-    """Inverse of im2col — scatter columns back to image layout."""
+    """Inverse of im2col: scatter columns back to image layout."""
     N, C, H, W = x_shape
     H_padded = H + 2 * padding
     W_padded = W + 2 * padding

@@ -83,7 +83,7 @@ def test_mean():
 
 
 def test_combined():
-    """relu(Wx + b).mean() — basically a neural net forward pass."""
+    """relu(Wx + b).mean() - basically a neural net forward pass."""
     W = Tensor(np.random.randn(3, 4).astype(np.float32), requires_grad=True)
     x = Tensor(np.random.randn(4, 2).astype(np.float32), requires_grad=True)
     b = Tensor(np.random.randn(3, 1).astype(np.float32), requires_grad=True)

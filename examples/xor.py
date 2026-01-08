@@ -1,7 +1,7 @@
 """Train a tiny neural network to learn XOR.
 
 XOR is the classic test for neural networks because it's not linearly
-separable — you need at least one hidden layer to learn it.
+separable, so you need at least one hidden layer to learn it.
 
 Network: 2 -> 8 -> 1 (with ReLU activation)
 """

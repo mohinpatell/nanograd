@@ -2,7 +2,7 @@ from nanograd.nn.module import Module
 
 
 class Sequential(Module):
-    """A sequential container — modules are applied in order."""
+    """Sequential container. Modules are applied in order."""
 
     def __init__(self, *layers):
         self.layers = list(layers)

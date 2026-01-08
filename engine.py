@@ -33,7 +33,7 @@ class Value:
         return out
 
     def backward(self):
-        # topological sort — we need to call _backward in reverse order
+        # topological sort so we call _backward in the right order
         topo = []
         visited = set()
         def build_topo(v):

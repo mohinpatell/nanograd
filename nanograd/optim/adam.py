@@ -2,7 +2,7 @@ import numpy as np
 
 
 class Adam:
-    """Adam optimizer — adaptive learning rates with momentum.
+    """Adam optimizer. Adaptive learning rates with momentum.
 
     Combines the ideas of momentum (exponential moving average of gradients)
     and RMSprop (exponential moving average of squared gradients).
@@ -33,7 +33,7 @@ class Adam:
             # update biased second raw moment estimate
             self.v[i] = self.beta2 * self.v[i] + (1 - self.beta2) * (p.grad ** 2)
 
-            # bias correction — important in early steps when estimates are biased toward 0
+            # bias correction (important early on when estimates are biased toward 0)
             m_hat = self.m[i] / (1 - self.beta1 ** self.t)
             v_hat = self.v[i] / (1 - self.beta2 ** self.t)
 

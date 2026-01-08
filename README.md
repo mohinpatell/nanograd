@@ -1,35 +1,27 @@
 # nanograd
 
-A minimal autograd engine and neural network library built from scratch.
+Autograd engine and neural network library from scratch, using only numpy.
 
-I built this to understand how frameworks like PyTorch actually compute gradients. Every operation, every backward pass, every optimizer — written from the ground up with just numpy.
+I kept using PyTorch at work and realized I had no idea what actually happens when you call `.backward()`. So I decided to build it myself from the ground up. Started with scalar values and the chain rule, and kept going until I had something that could train CNNs on MNIST.
 
-What started as a scalar autograd engine grew into a tensor-based framework that can train CNNs on MNIST. It's not fast (it's pure Python/numpy), but it's correct — and I understand every line of it.
+It's slow (pure Python + numpy, no CUDA), but every gradient is correct, and I actually understand all of it now.
 
-## What's implemented
+## What's in here
 
 **Autograd engine**
 - Tensor class with automatic differentiation
-- Operations: add, mul, matmul, exp, log, relu, sum, mean, reshape, transpose
-- Broadcasting support with correct gradient accumulation
-- Topological sort for backpropagation ordering
+- Supports add, mul, matmul, exp, log, relu, sum, mean, reshape, transpose
+- Broadcasting with correct gradient accumulation
+- Topological sort for backprop ordering
 
-**Neural network layers**
-- `Linear` — fully connected layer with He initialization
-- `Conv2d` — 2D convolution using im2col
-- `MaxPool2d` — max pooling with gradient routing
-- `ReLU` — rectified linear unit
-- `Dropout` — inverted dropout with train/eval mode
-- `Sequential` — layer container
-- `Flatten` — reshape for conv-to-linear transition
+**NN layers**
+- `Linear` - fully connected, He init
+- `Conv2d` - 2D convolution via im2col
+- `MaxPool2d`, `Flatten`, `ReLU`, `Dropout`, `Sequential`
 
-**Loss functions**
-- `MSELoss` — mean squared error
-- `CrossEntropyLoss` — with log-sum-exp trick for numerical stability
+**Losses**: `MSELoss`, `CrossEntropyLoss` (log-sum-exp for numerical stability)
 
-**Optimizers**
-- `SGD` — stochastic gradient descent
-- `Adam` — adaptive learning rates with momentum + bias correction
+**Optimizers**: `SGD`, `Adam`
 
 ## Results
 
@@ -45,14 +37,12 @@ from nanograd import Tensor
 from nanograd.nn import Linear, ReLU, Sequential, CrossEntropyLoss
 from nanograd.optim import Adam
 
-# define a model
 model = Sequential(
     Linear(784, 128),
     ReLU(),
     Linear(128, 10),
 )
 
-# training loop
 optimizer = Adam(model.parameters(), lr=1e-3)
 criterion = CrossEntropyLoss()
 
@@ -62,38 +52,38 @@ loss.backward()
 optimizer.step()
 ```
 
-## What I learned
+## Things I learned building this
 
-- How computational graphs track operations for automatic differentiation
-- The chain rule applied to tensor operations (broadcasting makes gradients tricky!)
-- Why He initialization matters for ReLU networks
-- im2col: how convolutions are really just matrix multiplies
-- The log-sum-exp trick for numerically stable softmax
-- Why Adam converges faster than SGD (adaptive per-parameter learning rates)
+- How computational graphs track operations for autodiff
+- Broadcasting makes gradient accumulation surprisingly tricky
+- He initialization actually matters a lot for ReLU networks
+- Convolutions are really just matrix multiplies (im2col)
+- Log-sum-exp trick is essential for stable softmax
+- Adam converges way faster than vanilla SGD because of per-parameter learning rates
 
 ## Project structure
 
 ```
 nanograd/
-  tensor.py          # Core tensor with autograd
+  tensor.py          # core tensor with autograd
   nn/
     module.py        # Module base class, Parameter
-    linear.py        # Fully connected layer
+    linear.py        # fully connected layer
     conv.py          # Conv2d with im2col
     pooling.py       # MaxPool2d, Flatten
     activations.py   # ReLU
     loss.py          # MSE, CrossEntropy
-    dropout.py       # Dropout regularization
+    dropout.py       # dropout regularization
     sequential.py    # Sequential container
   optim/
-    sgd.py           # SGD optimizer
-    adam.py           # Adam optimizer
+    sgd.py           # SGD
+    adam.py           # Adam
   data/
-    dataloader.py    # Batching and shuffling
-    mnist.py         # MNIST download and loading
+    dataloader.py    # batching + shuffling
+    mnist.py         # MNIST download + loading
 ```
 
-## Running the examples
+## Running examples
 
 ```bash
 pip install numpy

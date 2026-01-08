@@ -15,7 +15,7 @@ class CrossEntropyLoss(Module):
     """Cross-entropy loss for classification.
 
     Expects:
-        logits: (batch, num_classes) — raw scores, NOT softmax'd
+        logits: (batch, num_classes) raw scores, NOT softmax'd
         targets: (batch,) integer class labels as a numpy array
 
     Computes log-softmax internally using the log-sum-exp trick for
@@ -33,7 +33,7 @@ class CrossEntropyLoss(Module):
         exp_shifted = shifted.exp()
 
         # sum along class dimension
-        # we need a sum that keeps dims — build it manually
+        # we need a sum that keeps dims, have to build it manually
         sum_exp = Tensor(exp_shifted.data.sum(axis=1, keepdims=True),
                          (exp_shifted,), 'sum_axis1',
                          requires_grad=exp_shifted.requires_grad)
